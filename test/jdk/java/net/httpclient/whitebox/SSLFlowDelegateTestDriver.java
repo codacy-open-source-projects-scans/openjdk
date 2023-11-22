@@ -21,33 +21,13 @@
  * questions.
  */
 
-#include <errno.h>
-
-#ifdef _WIN64
-#define EXPORT __declspec(dllexport)
-#else
-#define EXPORT
-#endif
-
-EXPORT void empty() {}
-
-EXPORT int identity(int value) {
-    return value;
-}
-
-// 128 bit struct returned in buffer on SysV
-struct Big {
-    long long x;
-    long long y;
-};
-
-EXPORT struct Big with_return_buffer() {
-    struct Big b;
-    b.x = 10;
-    b.y = 11;
-    return b;
-}
-
-EXPORT void do_upcall(void(*f)(void)) {
-    f();
-}
+/*
+ * @test
+ * @bug 8308144
+ * @summary tests that the SSLFlowDelegate doesn't accumulate application data when the
+ *          downReader doesn't request any
+ * @modules java.net.http/jdk.internal.net.http
+ * @run testng/othervm  -Djdk.internal.httpclient.debug=true
+ *                      -Djavax.net.debug=ssl:handshake
+ *                      java.net.http/jdk.internal.net.http.SSLFlowDelegateTest
+ */
