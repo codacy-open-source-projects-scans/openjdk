@@ -27,6 +27,7 @@
 
 #include "gc/serial/cSpaceCounters.hpp"
 #include "gc/serial/generation.hpp"
+#include "gc/serial/tenuredGeneration.hpp"
 #include "gc/shared/ageTable.hpp"
 #include "gc/shared/copyFailedInfo.hpp"
 #include "gc/shared/gc_globals.hpp"
@@ -52,7 +53,8 @@ class STWGCTimer;
 class DefNewGeneration: public Generation {
   friend class VMStructs;
 
-  Generation* _old_gen;
+  TenuredGeneration* _old_gen;
+
   uint        _tenuring_threshold;   // Tenuring threshold for next collection.
   AgeTable    _age_table;
   // Size of object to pretenure in words; command line provides bytes
@@ -224,7 +226,7 @@ class DefNewGeneration: public Generation {
 
   HeapWord* par_allocate(size_t word_size, bool is_tlab);
 
-  virtual void gc_epilogue(bool full);
+  void gc_epilogue(bool full);
 
   // Save the tops for eden, from, and to
   virtual void record_spaces_top();
@@ -248,7 +250,7 @@ class DefNewGeneration: public Generation {
   void reset_scratch();
 
   // GC support
-  virtual void compute_new_size();
+  void compute_new_size();
 
   // Returns true if the collection is likely to be safely
   // completed. Even if this method returns true, a collection
