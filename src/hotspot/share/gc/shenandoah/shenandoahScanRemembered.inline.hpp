@@ -1,5 +1,6 @@
 /*
  * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,18 +26,19 @@
 #ifndef SHARE_GC_SHENANDOAH_SHENANDOAHSCANREMEMBEREDINLINE_HPP
 #define SHARE_GC_SHENANDOAH_SHENANDOAHSCANREMEMBEREDINLINE_HPP
 
-#include "memory/iterator.hpp"
-#include "oops/oop.hpp"
-#include "oops/objArrayOop.hpp"
+#include "gc/shenandoah/shenandoahScanRemembered.hpp"
+
 #include "gc/shared/collectorCounters.hpp"
+#include "gc/shenandoah/mode/shenandoahMode.hpp"
 #include "gc/shenandoah/shenandoahCardStats.hpp"
 #include "gc/shenandoah/shenandoahCardTable.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahOldGeneration.hpp"
-#include "gc/shenandoah/shenandoahScanRemembered.hpp"
-#include "gc/shenandoah/mode/shenandoahMode.hpp"
 #include "logging/log.hpp"
+#include "memory/iterator.hpp"
+#include "oops/objArrayOop.hpp"
+#include "oops/oop.hpp"
 
 // Process all objects starting within count clusters beginning with first_cluster and for which the start address is
 // less than end_of_range.  For any non-array object whose header lies on a dirty card, scan the entire object,
@@ -69,8 +71,8 @@ void ShenandoahScanRemembered::process_clusters(size_t first_cluster, size_t cou
 
   const size_t whole_cards = (end_addr - start_addr + CardTable::card_size_in_words() - 1)/CardTable::card_size_in_words();
   const size_t end_card_index = start_card_index + whole_cards - 1;
-  log_debug(gc, remset)("Worker %u: cluster = " SIZE_FORMAT " count = " SIZE_FORMAT " eor = " INTPTR_FORMAT
-                        " start_addr = " INTPTR_FORMAT " end_addr = " INTPTR_FORMAT " cards = " SIZE_FORMAT,
+  log_debug(gc, remset)("Worker %u: cluster = %zu count = %zu eor = " INTPTR_FORMAT
+                        " start_addr = " INTPTR_FORMAT " end_addr = " INTPTR_FORMAT " cards = %zu",
                         worker_id, first_cluster, count, p2i(end_of_range), p2i(start_addr), p2i(end_addr), whole_cards);
 
   // use_write_table states whether we are using the card table that is being
@@ -341,9 +343,9 @@ ShenandoahScanRemembered::process_region_slice(ShenandoahHeapRegion *region, siz
     }
   }
 
-  log_debug(gc)("Remembered set scan processing Region " SIZE_FORMAT ", from " PTR_FORMAT " to " PTR_FORMAT ", using %s table",
-                region->index(), p2i(start_of_range), p2i(end_of_range),
-                use_write_table? "read/write (updating)": "read (marking)");
+  log_debug(gc, remset)("Remembered set scan processing Region %zu, from " PTR_FORMAT " to " PTR_FORMAT ", using %s table",
+                        region->index(), p2i(start_of_range), p2i(end_of_range),
+                        use_write_table? "read/write (updating)": "read (marking)");
 
   // Note that end_of_range may point to the middle of a cluster because we limit scanning to
   // region->top() or region->get_update_watermark(). We avoid processing past end_of_range.
@@ -367,7 +369,7 @@ inline bool ShenandoahRegionChunkIterator::next(struct ShenandoahRegionChunk *as
   if (_index >= _total_chunks) {
     return false;
   }
-  size_t new_index = Atomic::add(&_index, (size_t) 1, memory_order_relaxed);
+  size_t new_index = AtomicAccess::add(&_index, (size_t) 1, memory_order_relaxed);
   if (new_index > _total_chunks) {
     // First worker that hits new_index == _total_chunks continues, other
     // contending workers return false.
