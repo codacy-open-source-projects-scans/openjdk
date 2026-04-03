@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,25 +19,20 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-import org.junit.jupiter.api.Test;
+public class CustomLoadee {
+    public CustomLoadee() {
+        hotspot2();
+    }
 
-import java.net.InetAddress;
-
-/**
- * @test
- * @summary Test that provider which uses InetAddress APIs during its initialization
- * wouldn't cause stack overflow and will be successfully installed.
- * @library providers/recursive
- * @build recursive.init.provider/impl.InetAddressUsageInGetProviderImpl
- * @run junit/othervm InetAddressUsageInGetProviderTest
- */
-
-public class InetAddressUsageInGetProviderTest {
-
-    @Test
-    public void testSuccessfulProviderInstantiationTest() throws Exception {
-        System.err.println(InetAddress.getAllByName(InetAddress.getLocalHost().getHostName()));
+    static volatile int x;
+    static void hotspot2() {
+        long start = System.currentTimeMillis();
+        // run this loop long enough (400ms) for it to be JIT compiled.
+        while (System.currentTimeMillis() - start < 400) {
+            x += 1;
+        }
     }
 }
