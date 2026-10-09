@@ -24,6 +24,7 @@
  */
 
 #include "gc/shenandoah/shenandoahAsserts.hpp"
+#include "gc/shenandoah/shenandoahForwarding.inline.hpp"
 #include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahGenerationalEvacuationTask.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
@@ -40,7 +41,7 @@ public:
 
   void do_object(oop p) override {
     shenandoah_assert_marked(nullptr, p);
-    if (!p->is_forwarded()) {
+    if (!ShenandoahForwarding::is_forwarded(p)) {
       _heap->evacuate_object(p, _thread);
     }
   }
@@ -62,10 +63,12 @@ ShenandoahGenerationalEvacuationTask::ShenandoahGenerationalEvacuationTask(Shena
 
 void ShenandoahGenerationalEvacuationTask::work(uint worker_id) {
   if (_concurrent) {
+    ShenandoahWorkerTimingsTracker timer(ShenandoahPhaseTimings::conc_evac, ShenandoahPhaseTimings::Work, worker_id, true);
     ShenandoahConcurrentWorkerSession worker_session(worker_id);
-    ShenandoahSuspendibleThreadSetJoiner stsj;
+    SuspendibleThreadSetJoiner stsj;
     do_work();
   } else {
+    ShenandoahWorkerTimingsTracker timer(ShenandoahPhaseTimings::degen_gc_evac, ShenandoahPhaseTimings::Work, worker_id, true);
     ShenandoahParallelWorkerSession worker_session(worker_id);
     do_work();
   }
@@ -73,7 +76,6 @@ void ShenandoahGenerationalEvacuationTask::work(uint worker_id) {
 
 void ShenandoahGenerationalEvacuationTask::do_work() {
   if (_only_promote_regions) {
-    // No allocations will be made, do not enter oom-during-evac protocol.
     assert(_heap->collection_set()->is_empty(), "Should not have a collection set here");
     promote_regions();
   } else {
@@ -122,7 +124,6 @@ void ShenandoahGenerationalEvacuationTask::evacuate_and_promote_regions() {
 
     if (r->is_cset()) {
       assert(r->has_live(), "Region %zu should have been reclaimed early", r->index());
-      ShenandoahEvacOOMScope oom_evac_scope;
       _heap->marked_object_iterate(r, &cl);
     } else {
       promoter.maybe_promote_region(r);
